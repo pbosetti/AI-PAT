@@ -1,0 +1,8 @@
+digraph net {
+  node [shape="box" color="grey" fontname="Helvetica", width="1"]
+  photo [image="images/dog.jpg", width=1, imagescale=width, label=""]
+  net [label = "DNN" fontcolor="white" fillcolor="black" style="filled"]
+  out [label = "\"cane\""]
+  photo -> net
+  net -> out
+}

@@ -12,7 +12,7 @@ format:
     code-annotations: below
     preview-links: auto
     chalkboard: true
-    footer: "MADS --- [https://pbosetti.github.io/OptPar](/)"
+    footer: "MADS --- [https://paolobosetti.quarto.pub/AI_PAT](https://paolobosetti.quarto.pub/AI_PAT)"
     fig-width: 5
     fig-height: 4
     fig-dpi: 300

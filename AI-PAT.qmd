@@ -1,5 +1,12 @@
 ---
-title: "AI-PAT"
+title: "Come funziona l’Intelligenza Artificiale"
+subtitle: |
+  Tr.A.In. ---
+  Nuovi modi di lavorare nella PA: intelligenza artificiale, spazi e tempi
+author: Paolo Bosetti
+affiliation: Università di Trento
+date: 2025-11-22
+modified-date: today
 format: revealjs
 ---
 
@@ -11,13 +18,314 @@ knitr::opts_chunk$set(
 )
 library(tidyverse)
 library(modelr)
+library(patchwork)
 ```
 
 
-## Quarto
+# Contenuti
 
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+* Contesto: **Machine Learning**
+* Un esempio semplice
+* Il **Deep Learning**
+  - principi
+  - sviluppo
+  - allucinazioni
+* AI per le masse
+* Rischi dell'AI
+
+
+# Machine Learning
+:::{style="text-align: center;"}
+![](images/classification.png){width="80%"}
+:::
+
+## In altre parole
+
+:::columns
+:::{.column width=60%}
+* Ciò che oggi è di dominio comune è solo una delle numerose tecniche che vanno sotto il nome di ***machine learning***
+* *Machine learning* significa realizzare ed usare una procedura di calcolo che fornisce predizioni sulla base di **un'esperienza**
+* **realizzare** la procedura si chiama **addestramento**
+* **utilizzare** la procedura si chiama **inferenza**
+* La *procedura di calcolo* si chiama **modello**
+:::
+
+:::{.column width=40%}
+```{dot p_diagram}
+digraph p_diagram {
+  rankdir="TB"
+  node [shape="box" color="white" fontname="Helvetica"]
+  A [label = "Predittori"]
+  P [label="MODELLO" fontcolor="white" fillcolor="black" style="filled"]
+  Y [label="Predizione"]
+
+  A -> P
+  P -> Y
+}
+```
+:::
+:::
+
+:::callout-note
+Un modello può essere visto come una **black-box** che effettua una trasformazione tra ingressi (predittori) e uscita (predizione)
+:::
+
+## Però
+
+:::columns
+:::{.column width=60%}
+* Il modello fornisce una predizione su base **probabilistica**
+* L'affidabilità del modello degrada quando **estrapola** cioè quando fornisce predizioni a partire da condizioni per le quali non è stato addestrato
+* Comprendere potenzialità e limiti di un modello predittivo **richiede comprensione degli aspetti statistici** legati alla sua creazione e addestramento
+:::
+
+:::{.column width=40%}
+```{dot ref.label="p_diagram"}
+```
+:::
+:::
+
+:::callout-warning
+Più è complesso il modello, più la comprensione è difficile e **maggiore è la responsabilità** assunta dall'utente (o, se si preferisce, la cieca fiducia riposta nel sistema ML...)
+:::
+
+#
+
+:::r-fit-text
+Ogni forma sufficientemente avanzata di 
+
+**tecnologia** è indistinguibile dalla **magia**
+
+:::{style="text-align: right;"}
+*-- Arthur C. Clarke*
+:::
+:::
+
+
+# Esempio Zero: regressione
 
 ```{r}
-1 + 1
+set.seed(1)
+dn <- -1000
+N <- 250
+df <- tibble(
+  n = seq(-1000-dn, 1000-dn, length.out=N),
+  t = 50 + (1*(n+dn) -0.1*(n+dn)^2 + 1*(n+dn)^3)/5e7 + rnorm(length(n), 0, 2),
+  s1 = sample(c(T,F), size=N, replace=T, prob=c(90,10)),
+  s2 = sample(c(T,F), size=N, replace=T, prob=c(90,10))
+)
+
+df <- df %>% 
+  add_predictions(lm(t~poly(n, 3, raw=T), data=filter(df, s1==FALSE)), var="m1") %>% 
+  add_predictions(lm(t~poly(n, 26, raw=T), data=filter(df, s1==FALSE)), var="m2") 
+
+p0 <- df %>% ggplot(aes(x=n, y=t)) + 
+  geom_point(color=grey(4/5)) +
+  lims(y=c(20, 80)) + 
+  labs(x="Numero veicoli", y="Percorrenza (min)")
+p1 <- p0 + geom_point(data=filter(df, s1==FALSE), color="red")
+p2 <- p0 + geom_point(data=filter(df, s2==FALSE), color="orange")
 ```
+
+## Dati
+
+
+:::columns
+:::column
+Supponiamo di voler predire il tempo di percorrenza di una tratta stradale in funzione del numero di veicoli circolanti
+
+* dell'intera **realtà** dobbiamo ovviamente *fotografarne* una parte, cioè ottenere un **campione** sul quale addestrare il modello
+:::
+
+:::column
+```{r}
+p0
+```
+:::
+:::
+
+
+## Regressione: il campionamento
+
+:::columns
+:::column
+* Ogni possibile **campione** è un sottoinsieme casuale della realtà (cioè dell'intera *popolazione*)
+* Per essere **rappresentativo** il campione deve essere sufficientemente numeroso e uniformemente distribuito, cioè ogni elemento originale deve avere la stessa probabilità di essere estratto
+:::
+
+:::column
+```{r fig.cap="Due possibili campioni"}
+p1 / p2
+```
+:::
+:::
+
+## Regressione: l'importanza del modello
+
+:::columns
+:::column
+La scelta del modello opportuno sta nell'abilità/esperienza dell'analista
+
+Può essere:
+
+* troppo [semplice]{.bgreen}
+* appropriato
+* troppo [complesso]{.bblue}
+
+:::
+
+:::column
+```{r fig.cap="Tre possibili modelli, addestrati sul medesimo campione"}
+{p1 + geom_line(aes(y=m1)) + geom_smooth(method="lm", formula=y~x, linetype=2, linewidth=0.5, color="green")} /
+{p1 + geom_line(aes(y=m2), color="blue")}
+```
+:::
+:::
+
+
+## Regressione: la perdita di generalità
+
+:::columns
+:::column
+Spesso un modello troppo complesso predice **peggio** di un modello troppo semplice:
+
+* la capacità predittiva **in estrapolazione** è pessima
+* se è vero che insegue molto bene i dati su cui è stato addestrato, quando lo confronto con **nuovi dati** la prestazione predittiva è decisamente peggiore
+* un modello opportuno, viceversa, ha prestazioni comparabili sia su dati di [addestramento]{.bred} che su un qualsiasi **set di dati successivo**
+:::
+
+:::column
+```{r fig.cap="Due possibili modelliverificati su un nuovo"}
+{p2 + geom_line(aes(y=m1))} /
+{p2 + geom_line(aes(y=m2))} 
+```
+:::
+:::
+
+## L'importanza della validazione
+
+Quanto visto nell'esempio è **trasversale a tutte le tecniche di ML**:
+
+* l'**efficacia predittiva** dipende fortemente dal modello e dall'adeguatezza e rappresentatività del set di dati su cui il modello è stato addestrato
+* modelli troppo complicati possono perdere efficacia su dati per cui non sono stati addestrati
+* ogni modello rappresenta un'**approssimazione statistica** di una realtà più o meno aleatoria
+
+:::callout-important
+## La validazione
+Prima di essere accettato, un modello deve essere **validato**: deve cioè essere verificato su dati non utilizzati per l'addestramento, e deve fornire su tali dati una prestazione analoga a quella ottenuta in addestramento
+:::
+
+
+# *Deep learning* e le reti neurali profonde
+
+
+## Cos'è una rete neurale
+
+:::columns
+:::column
+Le **reti neurali artificiali** sono un concetto non nuovo:
+
+* una regressione lineare è la rete neurale più semplice, inventata da Gauss nel 1795
+* Rosenblatt (1958) hs dato la prima formulazione di una rete basata su collegamenti tra neuroni (*perceptron*)
+* Reti LSTM proposte dal Hochreiter nel 1995
+* Andrew Ng, addestramento di CNN su GPU, 2009
+:::
+
+:::{.column style="text-align: center;"}
+![Rete neurale con un solo strato nascosto](https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Colored_neural_network.svg/1920px-Colored_neural_network.svg.png){width="60%"}
+:::
+:::
+
+
+## Cosa significa *profonda*
+
+:::{style="text-align: center;"}
+![](https://lamarr-institute.org/wp-content/uploads/deepLearn_2_EN.png){width="75%"}
+:::
+
+:::callout-important
+Valgono le stesse attenzioni che per la regressione lineare, in particolare: necessità di validazione, risposta probabilistica
+:::
+
+## Come siamo arrivati ad oggi
+
+È basata su **quattro pilastri**:
+
+1. la disponibilità di potenza di calcolo per l'addestramento (**GPU, TPU**)
+2. la disponibilità di un esteso campione di dati **annotati**
+3. la disponibilità di metodi (e strumenti software) computazionali di ottimizzazione (**CUDA, OpenCL**)
+4. la disponibilità di strumenti software per semplificare e automatizzare la definizione ad alto livello delle topologie di rete (**TensorFlow, Keras, PyTorch**, etc.)
+
+:::callout-note
+Tuttora, i punti 1. e 2. sono quelli più rigidamente collegati ad un costo computazionale ed economico: il primo richiede potenza di calcolo ed **energia**, il secondo richiede **tempo/informazioni**
+:::
+
+
+## Le allucinazioni e l'AI generativa
+
+:::columns
+:::column
+* Prima applicazione di largo uso: classificazione di immagini
+* E se **invertiamo** la DNN? possiamo partire da una classe (es. "cane") e ottenere un'immagine
+* È il meccanismo (anche biologico) dell'**allucinazione**
+:::
+
+:::column
+![Inferenza su un'immagine fotografica](images/hal.dot.png)
+:::
+:::
+
+
+## Le allucinazioni e l'AI generativa
+
+:::columns
+:::column
+* Le prime allucinazioni erano tali anche nell'aspetto
+* Ma l'idea, raffinata, ha portato alla **AI generativa**
+
+:::callout-note
+Ciò illustra quanto sia errata l'accusa di plagiarismo per le AI generative: l'allucinazione **non è** un *collage* di immagini da un database, ma è una immagine originale generata a partire da un progetto di astrazione--concretizzazione
+:::
+:::
+
+:::column
+![Allucinazione (Ian J. Goodfellow, 2014)](images/goodfellow.png)
+:::
+:::
+
+
+# Il passaggio a tecnologia d'uso
+
+* Il vero passaggio della AI a tecnologia d'uso corrente è avvenuto grazie ai **Large Language Model**
+* Analogamente alle AI generative, che sono **mappe invertibili** tra il dominio delle classi descrittive e il dominio delle immagini, gli LLM sono **mappe invertibili** tra domini di conoscenza (o *linguaggi*) generici
+  - possono tradurre tra lingue
+  - possono convertire in formati espressivi diversi
+  - possono passare da un dominio espressivo (testo) ad un'altro (linguaggio di programmazione)
+  - possono generare immagini a partire da testi (*prompt*)
+  
+:::callout-warning
+Ma lo fanno sempre secondo un **processo probabilistico!**
+:::
+
+# I rischi dell'AI
+
+## Rischi generici
+
+* Uso **fideistico/magico**
+* Uso a *black-box*: anche comprendendone i principi, la complessità rende il sistema opaco e richiede un **investimento in fiducia**
+* Riduzione delle competenze base (*sindrome del "motore a scoppio"*) che comporta un ***lock-in* tecnologico**
+* Impatto sociale sul mondo del lavoro
+* Impatto sociale psicologico
+* Strumento probabilistico ma senza una **stima di confidenza** (e il mercato la scoraggia!)
+* *Black-box* anche per gli sviluppatori (è **controllabile**?)
+* *Black-box* legale (di chi è la **responsabilità**?)
+
+## Rischi specifici
+:::{style="text-align: center;"}
+![Ricostruzione di ambienti dal segnale WiFi](https://cdn.mos.cms.futurecdn.net/qwi2P3pXtdDg4MNbqD4ZsN.jpg){width="80%"}
+:::
+
+## Rischi specifici
+:::{style="text-align: center;"}
+![Lettura del pensiero (via MRI)](https://www.science.org/do/10.1126/science.adh4932/abs/_20230307_on_artificial_intelligence_photographs.jpg){width="80%"}
+:::

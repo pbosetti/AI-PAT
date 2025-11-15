@@ -3,11 +3,15 @@ title: "Come funziona l’Intelligenza Artificiale"
 subtitle: |
   Tr.A.In. ---
   Nuovi modi di lavorare nella PA: intelligenza artificiale, spazi e tempi
-author: Paolo Bosetti
-affiliation: Università di Trento
+author: "Paolo Bosetti"
+institute: "Dipartimento di Ingegneria Industriale\n\nUniversità di Trento"
 date: 2025-11-22
 modified-date: today
-format: revealjs
+format: 
+  revealjs: default
+email-obfuscation: javascript
+transition: none
+transition-speed: fast
 ---
 
 ```{r setup}
@@ -45,9 +49,9 @@ library(patchwork)
 :::{.column width=60%}
 * Ciò che oggi è di dominio comune è solo una delle numerose tecniche che vanno sotto il nome di ***machine learning***
 * *Machine learning* significa realizzare ed usare una procedura di calcolo che fornisce predizioni sulla base di **un'esperienza**
-* **realizzare** la procedura si chiama **addestramento**
-* **utilizzare** la procedura si chiama **inferenza**
 * La *procedura di calcolo* si chiama **modello**
+* *calibrare i parametri* del modello si chiama **addestramento**
+* *utilizzare* la procedura si chiama **inferenza**
 :::
 
 :::{.column width=40%}
@@ -89,30 +93,23 @@ Un modello può essere visto come una **black-box** che effettua una trasformazi
 Più è complesso il modello, più la comprensione è difficile e **maggiore è la responsabilità** assunta dall'utente (o, se si preferisce, la cieca fiducia riposta nel sistema ML...)
 :::
 
-#
-
-:::r-fit-text
-Ogni forma sufficientemente avanzata di 
-
-**tecnologia** è indistinguibile dalla **magia**
-
-:::{style="text-align: right;"}
-*-- Arthur C. Clarke*
-:::
-:::
-
 
 # Esempio Zero: regressione
 
 ```{r}
 set.seed(1)
 dn <- -1000
-N <- 250
+N <- 150
 df <- tibble(
   n = seq(-1000-dn, 1000-dn, length.out=N),
   t = 50 + (1*(n+dn) -0.1*(n+dn)^2 + 1*(n+dn)^3)/5e7 + rnorm(length(n), 0, 2),
   s1 = sample(c(T,F), size=N, replace=T, prob=c(90,10)),
-  s2 = sample(c(T,F), size=N, replace=T, prob=c(90,10))
+  s2 = sample(c(T,F), size=N, replace=T, prob=c(90,10)),
+  s3 = c(
+    sample(c(T,F), size = N/6, replace = T, prob=c(75,25)),
+    rep(T, N/6*4),
+    sample(c(T,F), size = N/6, replace = T, prob=c(75,25))
+  )[1:N]
 )
 
 df <- df %>% 
@@ -121,10 +118,11 @@ df <- df %>%
 
 p0 <- df %>% ggplot(aes(x=n, y=t)) + 
   geom_point(color=grey(4/5)) +
-  lims(y=c(20, 80)) + 
+  coord_cartesian(ylim=c(10,90)) +
   labs(x="Numero veicoli", y="Percorrenza (min)")
 p1 <- p0 + geom_point(data=filter(df, s1==FALSE), color="red")
-p2 <- p0 + geom_point(data=filter(df, s2==FALSE), color="orange")
+p2 <- p0 + geom_point(data=filter(df, s2==FALSE), color="blue")
+p3 <- p0 + geom_point(data=filter(df, s3==FALSE), color="orange")
 ```
 
 ## Dati
@@ -139,6 +137,7 @@ Supponiamo di voler predire il tempo di percorrenza di una tratta stradale in fu
 
 :::column
 ```{r}
+#| fig.cap: "Tempo di percorrenza di tratta stradale: dati grezzi"
 p0
 ```
 :::
@@ -151,11 +150,28 @@ p0
 :::column
 * Ogni possibile **campione** è un sottoinsieme casuale della realtà (cioè dell'intera *popolazione*)
 * Per essere **rappresentativo** il campione deve essere sufficientemente numeroso e uniformemente distribuito, cioè ogni elemento originale deve avere la stessa probabilità di essere estratto
+* Ciò vale per **qualsiasi sistema di *machine learning***
 :::
 
 :::column
 ```{r fig.cap="Due possibili campioni"}
 p1 / p2
+```
+:::
+:::
+
+## Regressione: il campionamento
+
+:::columns
+:::column
+* Ogni possibile **campione** è un sottoinsieme casuale della realtà (cioè dell'intera *popolazione*)
+* Per essere **rappresentativo** il campione deve essere sufficientemente numeroso e uniformemente distribuito, cioè ogni elemento originale deve avere la stessa probabilità di essere estratto
+* Ciò vale per **qualsiasi sistema di *machine learning***
+:::
+
+:::column
+```{r fig.cap="Due possibili campioni, il secondo **non rappresentativo**"}
+p1 / p3
 ```
 :::
 :::
@@ -195,9 +211,9 @@ Spesso un modello troppo complesso predice **peggio** di un modello troppo sempl
 :::
 
 :::column
-```{r fig.cap="Due possibili modelliverificati su un nuovo"}
+```{r fig.cap="Due possibili modelli verificati su un nuovo campione"}
 {p2 + geom_line(aes(y=m1))} /
-{p2 + geom_line(aes(y=m2))} 
+{p2 + geom_line(aes(y=m2), color="blue")} 
 ```
 :::
 :::
@@ -225,10 +241,10 @@ Prima di essere accettato, un modello deve essere **validato**: deve cioè esser
 :::column
 Le **reti neurali artificiali** sono un concetto non nuovo:
 
-* una regressione lineare è la rete neurale più semplice, inventata da Gauss nel 1795
-* Rosenblatt (1958) hs dato la prima formulazione di una rete basata su collegamenti tra neuroni (*perceptron*)
-* Reti LSTM proposte dal Hochreiter nel 1995
-* Andrew Ng, addestramento di CNN su GPU, 2009
+* una regressione lineare è la rete neurale più semplice, inventata da Gauss nel **1795**
+* Rosenblatt (**1958**) ha dato la prima formulazione di una rete basata su collegamenti tra neuroni (*perceptron*)
+* Reti LSTM proposte dal Hochreiter nel **1995**
+* Andrew Ng, addestramento di DNN su GPU, **2009**
 :::
 
 :::{.column style="text-align: center;"}
@@ -246,6 +262,7 @@ Le **reti neurali artificiali** sono un concetto non nuovo:
 :::callout-important
 Valgono le stesse attenzioni che per la regressione lineare, in particolare: necessità di validazione, risposta probabilistica
 :::
+
 
 ## Come siamo arrivati ad oggi
 
@@ -294,6 +311,10 @@ Ciò illustra quanto sia errata l'accusa di plagiarismo per le AI generative: l'
 :::
 
 
+# {background-iframe="https://nn-vis.noelith.dev"}
+
+
+
 # Il passaggio a tecnologia d'uso
 
 * Il vero passaggio della AI a tecnologia d'uso corrente è avvenuto grazie ai **Large Language Model**
@@ -306,6 +327,21 @@ Ciò illustra quanto sia errata l'accusa di plagiarismo per le AI generative: l'
 :::callout-warning
 Ma lo fanno sempre secondo un **processo probabilistico!**
 :::
+
+
+#
+
+:::r-fit-text
+Ogni forma sufficientemente avanzata di 
+
+**tecnologia** è indistinguibile dalla **magia**
+
+:::{style="text-align: right;"}
+*--- Arthur C. Clarke*
+:::
+:::
+
+
 
 # I rischi dell'AI
 
@@ -329,3 +365,24 @@ Ma lo fanno sempre secondo un **processo probabilistico!**
 :::{style="text-align: center;"}
 ![Lettura del pensiero (via MRI)](https://www.science.org/do/10.1126/science.adh4932/abs/_20230307_on_artificial_intelligence_photographs.jpg){width="80%"}
 :::
+
+# Grazie dell'attenzione
+
+:::columns
+:::column
+### Contatto:
+
+[paolo.bosetti@unitn.it](mailto:paolo.bosetti@unitn.it)
+
+{{< qrcode mailto:paolo.bosetti@unitn.it >}}
+:::
+
+:::{.column style="text-align: right;"}
+### Questo sito:
+
+<https://paolobosetti.quarto.pub/ai-pat>
+
+{{< qrcode https://paolobosetti.quarto.pub/ai-pat >}}
+:::
+:::
+

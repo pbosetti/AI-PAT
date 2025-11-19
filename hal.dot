@@ -3,6 +3,14 @@ digraph net {
   photo [image="onda.jpeg", width=1, imagescale=width, label=""]
   net [label = "DNN" fontcolor="white" fillcolor="black" style="filled"]
   out [label = "\"onda\""]
+  photo2 [image="onda2.png", width=1, imagescale=width, label=""]
+  net2 [label = "DNN inversa" fontcolor="white" fillcolor="black" style="filled"]
+  out2 [label = "\"onda\""]
   photo -> net
   net -> out
+  out2 -> net2
+  net2 -> photo2
+  rank=same; net; net2;
+  rank=same; out; photo2;
+  rank=same; photo; out2;
 }

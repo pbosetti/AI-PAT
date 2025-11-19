@@ -23,6 +23,7 @@ knitr::opts_chunk$set(
 library(tidyverse)
 library(modelr)
 library(patchwork)
+library(MASS)
 ```
 
 
@@ -38,12 +39,17 @@ library(patchwork)
 * Rischi dell'AI
 
 
-# Machine Learning
+# AI e *Machine Learning*
+:::{style="text-align: center;"}
+![](https://www.researchgate.net/publication/354124420/figure/fig3/AS:11431281386363922@1745064368955/Relationship-between-artificial-intelligence-machine-learning-neural-network-and-deep.tif){width="50%"}
+:::
+
+# AI e *Machine Learning*
 :::{style="text-align: center;"}
 ![](images/classification.png){width="80%"}
 :::
 
-## In altre parole
+## Cos'è il *machine learning*
 
 :::columns
 :::{.column width=60%}
@@ -94,144 +100,6 @@ Più è complesso il modello, più la comprensione è difficile e **maggiore è 
 :::
 
 
-# Esempio Zero: regressione
-
-```{r}
-set.seed(1)
-dn <- -1000
-N <- 150
-df <- tibble(
-  n = seq(-1000-dn, 1000-dn, length.out=N),
-  t = 50 + (1*(n+dn) -0.1*(n+dn)^2 + 1*(n+dn)^3)/5e7 + rnorm(length(n), 0, 2),
-  s1 = sample(c(T,F), size=N, replace=T, prob=c(90,10)),
-  s2 = sample(c(T,F), size=N, replace=T, prob=c(90,10)),
-  s3 = c(
-    sample(c(T,F), size = N/6, replace = T, prob=c(75,25)),
-    rep(T, N/6*4),
-    sample(c(T,F), size = N/6, replace = T, prob=c(75,25))
-  )[1:N]
-)
-
-df <- df %>% 
-  add_predictions(lm(t~poly(n, 3, raw=T), data=filter(df, s1==FALSE)), var="m1") %>% 
-  add_predictions(lm(t~poly(n, 26, raw=T), data=filter(df, s1==FALSE)), var="m2") 
-
-p0 <- df %>% ggplot(aes(x=n, y=t)) + 
-  geom_point(color=grey(4/5)) +
-  coord_cartesian(ylim=c(10,90)) +
-  labs(x="Numero veicoli", y="Percorrenza (min)")
-p1 <- p0 + geom_point(data=filter(df, s1==FALSE), color="red")
-p2 <- p0 + geom_point(data=filter(df, s2==FALSE), color="blue")
-p3 <- p0 + geom_point(data=filter(df, s3==FALSE), color="orange")
-```
-
-## Dati
-
-
-:::columns
-:::column
-Supponiamo di voler predire il tempo di percorrenza di una tratta stradale in funzione del numero di veicoli circolanti
-
-* dell'intera **realtà** dobbiamo ovviamente *fotografarne* una parte, cioè ottenere un **campione** sul quale addestrare il modello
-:::
-
-:::column
-```{r}
-#| fig.cap: "Tempo di percorrenza di tratta stradale: dati grezzi"
-p0
-```
-:::
-:::
-
-
-## Regressione: il campionamento
-
-:::columns
-:::column
-* Ogni possibile **campione** è un sottoinsieme casuale della realtà (cioè dell'intera *popolazione*)
-* Per essere **rappresentativo** il campione deve essere sufficientemente numeroso e uniformemente distribuito, cioè ogni elemento originale deve avere la stessa probabilità di essere estratto
-* Ciò vale per **qualsiasi sistema di *machine learning***
-:::
-
-:::column
-```{r fig.cap="Due possibili campioni"}
-p1 / p2
-```
-:::
-:::
-
-## Regressione: il campionamento
-
-:::columns
-:::column
-* Ogni possibile **campione** è un sottoinsieme casuale della realtà (cioè dell'intera *popolazione*)
-* Per essere **rappresentativo** il campione deve essere sufficientemente numeroso e uniformemente distribuito, cioè ogni elemento originale deve avere la stessa probabilità di essere estratto
-* Ciò vale per **qualsiasi sistema di *machine learning***
-:::
-
-:::column
-```{r fig.cap="Due possibili campioni, il secondo **non rappresentativo**"}
-p1 / p3
-```
-:::
-:::
-
-## Regressione: l'importanza del modello
-
-:::columns
-:::column
-La scelta del modello opportuno sta nell'abilità/esperienza dell'analista
-
-Può essere:
-
-* troppo [semplice]{.bgreen}
-* appropriato
-* troppo [complesso]{.bblue}
-
-:::
-
-:::column
-```{r fig.cap="Tre possibili modelli, addestrati sul medesimo campione"}
-{p1 + geom_line(aes(y=m1)) + geom_smooth(method="lm", formula=y~x, linetype=2, linewidth=0.5, color="green")} /
-{p1 + geom_line(aes(y=m2), color="blue")}
-```
-:::
-:::
-
-
-## Regressione: la perdita di generalità
-
-:::columns
-:::column
-Spesso un modello troppo complesso predice **peggio** di un modello troppo semplice:
-
-* la capacità predittiva **in estrapolazione** è pessima
-* se è vero che insegue molto bene i dati su cui è stato addestrato, quando lo confronto con **nuovi dati** la prestazione predittiva è decisamente peggiore
-* un modello opportuno, viceversa, ha prestazioni comparabili sia su dati di [addestramento]{.bred} che su un qualsiasi **set di dati successivo**
-:::
-
-:::column
-```{r fig.cap="Due possibili modelli verificati su un nuovo campione"}
-{p2 + geom_line(aes(y=m1))} /
-{p2 + geom_line(aes(y=m2), color="blue")} 
-```
-:::
-:::
-
-## L'importanza della validazione
-
-Quanto visto nell'esempio è **trasversale a tutte le tecniche di ML**:
-
-* l'**efficacia predittiva** dipende fortemente dal modello e dall'adeguatezza e rappresentatività del set di dati su cui il modello è stato addestrato
-* modelli troppo complicati possono perdere efficacia su dati per cui non sono stati addestrati
-* ogni modello rappresenta un'**approssimazione statistica** di una realtà più o meno aleatoria
-
-:::callout-important
-## La validazione
-Prima di essere accettato, un modello deve essere **validato**: deve cioè essere verificato su dati non utilizzati per l'addestramento, e deve fornire su tali dati una prestazione analoga a quella ottenuta in addestramento
-:::
-
-
 # *Deep learning* e le reti neurali profonde
 
 
@@ -248,7 +116,180 @@ Le **reti neurali artificiali** sono un concetto non nuovo:
 :::
 
 :::{.column style="text-align: center;"}
-![Rete neurale con un solo strato nascosto](https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Colored_neural_network.svg/1920px-Colored_neural_network.svg.png){width="60%"}
+```{dot nnet}
+digraph nn {
+  rankdir="LR";
+  splines=false;
+  node [fontname="Helvetica", fontsize=12];
+  edge [fontname="Helvetica", fontsize=8, fontcolor="#000099"];
+  subgraph input {
+    label=input;
+    altezza
+    peso
+  }
+  subgraph hidden {
+    label=hidden;
+    n1;
+    n2;
+    n3;
+  }
+  subgraph output {
+    label=output
+    maschio;
+    femmina;
+  }
+  
+  altezza -> n1 [xlabel="w1"]
+  altezza -> n2 [xlabel = "w2"]
+  altezza -> n3 [xlabel = "w3"]
+  peso -> n1 [xlabel = "w4"]
+  peso -> n2 [xlabel = "w5"]
+  peso -> n3 [xlabel = "w6"]
+  n1 -> maschio [xlabel = "w7"]
+  n2 -> maschio [xlabel = "w8"]
+  n3 -> maschio [xlabel = "w9"]
+  n1 -> femmina [xlabel = "w10"]
+  n2 -> femmina [xlabel = "w11"]
+  n3 -> femmina [xlabel = "w12"]
+}
+```
+
+:::
+:::
+
+## Esempio: addestramento
+
+```{r}
+set.seed(0)
+male <- mvrnorm(n=1000, mu=c(170,75), Sigma=matrix(c(20, 12, 12, 20), nrow=2)) %>% 
+  as_tibble() %>% 
+  rename(height = V1, mass = V2) %>% 
+  mutate(gender="maschio")
+
+female <- mvrnorm(n=1000, mu=c(160,60), Sigma=matrix(c(20, 10, 15, 20), nrow=2)) %>% 
+  as_tibble() %>% 
+  rename(height = V1, mass = V2) %>% 
+  mutate(gender="femmina")
+
+p0 <- rbind(male, female) %>% 
+  ggplot(aes(x=height, y=mass)) + 
+  geom_point(aes(color=gender, shape=gender)) + 
+  # scale_color_discrete(palette=c("pink", "lightblue")) +
+  labs(x="Statura (cm)", y="Peso (kg)", color="Sesso", shape="Sesso") + 
+  lims(x=c(140,190), y=c(38, 90))
+```
+
+:::columns
+:::column
+```{r}
+p0
+```
+:::
+
+:::column
+```{dot, ref.label="nnet"}
+```
+:::callout-note
+## Addestramento
+**Addestrare** la rete significa trovare la combinazione di **pesi** $w_i$ che minimizza il numero di predizioni errate
+:::
+:::
+:::
+
+
+## Esempio: inferenza
+
+:::columns
+:::column
+```{r}
+rbind(male, female) %>% 
+  ggplot(aes(x=height, y=mass)) + 
+  geom_point(aes(shape=gender), color=grey(4/5)) + 
+  geom_point(
+    data=tibble(height=178, mass=82, gender="maschio"),
+    aes(color=gender, shape=gender),
+    size=3,
+    show.legend = F
+  ) +
+  labs(x="Statura (cm)", y="Peso (kg)", color="Sesso", shape="Sesso") + 
+  lims(x=c(140,190), y=c(38, 90))
+```
+:::
+
+:::column
+```{dot nnet2}
+digraph nn {
+  rankdir="LR";
+  splines=false;
+  node [fontname="Helvetica", fontsize=12];
+  edge [fontname="Helvetica", fontsize=8, fontcolor="#000099"];
+  subgraph input {
+    label=input;
+    altezza [label="178 cm"]
+    peso [label="82 kg"]
+  }
+  subgraph hidden {
+    label=hidden;
+    n1;
+    n2;
+    n3;
+  }
+  subgraph output {
+    label=output
+    maschio;
+    femmina [fontcolor="#888888"];
+  }
+  
+  altezza -> n1 [xlabel="w1"]
+  altezza -> n2 [xlabel = "w2"]
+  altezza -> n3 [xlabel = "w3"]
+  peso -> n1 [xlabel = "w4"]
+  peso -> n2 [xlabel = "w5"]
+  peso -> n3 [xlabel = "w6"]
+  n1 -> maschio [xlabel = "w7"]
+  n2 -> maschio [xlabel = "w8"]
+  n3 -> maschio [xlabel = "w9"]
+  n1 -> femmina [xlabel = "w10"]
+  n2 -> femmina [xlabel = "w11"]
+  n3 -> femmina [xlabel = "w12"]
+}
+```
+:::callout-important
+Ma la risposta è **probabilistica**!!!
+:::
+:::
+:::
+
+
+## Esempio: inferenza
+
+:::columns
+:::column
+```{r}
+asia <- rbind(male, female) %>% 
+  mutate(height=height-8, mass=mass - 12) %>% 
+  slice_sample(n=200)
+
+rbind(male, female) %>% 
+  ggplot(aes(x=height, y=mass)) + 
+  geom_point(aes(shape=gender), color=grey(4/5)) + 
+  geom_point(
+    data=asia,
+    aes(color=gender, shape=gender)
+  ) +
+  labs(x="Statura (cm)", y="Peso (kg)", color="Sesso", shape="Sesso") + 
+  lims(x=c(140,190), y=c(38, 90))
+```
+
+:::
+
+:::column
+```{dot, ref.label="nnet"}
+```
+:::callout-warning
+## Inferenza su una popolazione differente (es. asiatica)
+Se usata su dati troppo diversi dal set di addestramento, fornisce inferenze sbagliate!
+:::
 :::
 :::
 
@@ -262,6 +303,9 @@ Le **reti neurali artificiali** sono un concetto non nuovo:
 :::callout-important
 Valgono le stesse attenzioni che per la regressione lineare, in particolare: necessità di validazione, risposta probabilistica
 :::
+
+
+# {background-iframe="https://nn-vis.noelith.dev"}
 
 
 ## Come siamo arrivati ad oggi
@@ -311,11 +355,9 @@ Ciò illustra quanto sia errata l'accusa di plagiarismo per le AI generative: l'
 :::
 
 
-# {background-iframe="https://nn-vis.noelith.dev"}
 
 
-
-# Il passaggio a tecnologia d'uso
+## Il passaggio a tecnologia d'uso
 
 * Il vero passaggio della AI a tecnologia d'uso corrente è avvenuto grazie ai **Large Language Model**
 * Analogamente alle AI generative, che sono **mappe invertibili** tra il dominio delle classi descrittive e il dominio delle immagini, gli LLM sono **mappe invertibili** tra domini di conoscenza (o *linguaggi*) generici
@@ -328,6 +370,7 @@ Ciò illustra quanto sia errata l'accusa di plagiarismo per le AI generative: l'
 Ma lo fanno sempre secondo un **processo probabilistico!**
 :::
 
+# I rischi dell'AI
 
 #
 
@@ -343,7 +386,6 @@ Ogni forma sufficientemente avanzata di
 
 
 
-# I rischi dell'AI
 
 ## Rischi generici
 

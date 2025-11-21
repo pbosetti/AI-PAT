@@ -7,3 +7,5 @@
 *.html
 *_files/*
 _publish.yml
+**/*.quarto_ipynb
+.vscode

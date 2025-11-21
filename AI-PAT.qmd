@@ -24,6 +24,49 @@ library(tidyverse)
 library(modelr)
 library(patchwork)
 library(MASS)
+library(neuralnet)
+```
+
+```{r}
+set.seed(0)
+male <- mvrnorm(n=1000, mu=c(170,75), Sigma=matrix(c(20, 12, 12, 20), nrow=2)) %>% 
+  as_tibble() %>% 
+  rename(height = V1, mass = V2) %>% 
+  mutate(gender="maschio")
+
+female <- mvrnorm(n=1000, mu=c(160,60), Sigma=matrix(c(20, 10, 15, 20), nrow=2)) %>% 
+  as_tibble() %>% 
+  rename(height = V1, mass = V2) %>% 
+  mutate(gender="femmina")
+
+p0 <- rbind(male, female) %>% 
+  ggplot(aes(x=height, y=mass)) + 
+  geom_point(aes(color=gender, shape=gender)) + 
+  # scale_color_discrete(palette=c("pink", "lightblue")) +
+  labs(x="Statura (cm)", y="Peso (kg)", color="Sesso", shape="Sesso") + 
+  lims(x=c(140,190), y=c(38, 90))
+```
+
+```{r}
+df <- rbind(male, female) %>% 
+  mutate(
+    train = sample(c(T,F), size=n(), replace=T, prob=c(80,20)),
+    maschio = ifelse(gender == "maschio", 1, 0),
+    femmina = ifelse(gender == "femmina", 1, 0),
+  ) %>% 
+  rename(statura=height, peso=mass)
+
+set.seed(0)
+model = neuralnet(
+  maschio+femmina~peso + statura,
+  data = filter(df, train) %>% dplyr::select(-gender),
+  hidden = c(3),
+  rep=1,
+  linear.output = FALSE,
+  lifesign="full",
+  threshold = 0.025,
+  startweights=0.1
+)
 ```
 
 
@@ -116,68 +159,13 @@ Le **reti neurali artificiali** sono un concetto non nuovo:
 :::
 
 :::{.column style="text-align: center;"}
-```{dot nnet}
-digraph nn {
-  rankdir="LR";
-  splines=false;
-  node [fontname="Helvetica", fontsize=12];
-  edge [fontname="Helvetica", fontsize=8, fontcolor="#000099"];
-  subgraph input {
-    label=input;
-    altezza
-    peso
-  }
-  subgraph hidden {
-    label=hidden;
-    n1;
-    n2;
-    n3;
-  }
-  subgraph output {
-    label=output
-    maschio;
-    femmina;
-  }
-  
-  altezza -> n1 [xlabel="w1"]
-  altezza -> n2 [xlabel = "w2"]
-  altezza -> n3 [xlabel = "w3"]
-  peso -> n1 [xlabel = "w4"]
-  peso -> n2 [xlabel = "w5"]
-  peso -> n3 [xlabel = "w6"]
-  n1 -> maschio [xlabel = "w7"]
-  n2 -> maschio [xlabel = "w8"]
-  n3 -> maschio [xlabel = "w9"]
-  n1 -> femmina [xlabel = "w10"]
-  n2 -> femmina [xlabel = "w11"]
-  n3 -> femmina [xlabel = "w12"]
-}
-```
+![](images/net.png)
+
 
 :::
 :::
 
 ## Esempio: addestramento
-
-```{r}
-set.seed(0)
-male <- mvrnorm(n=1000, mu=c(170,75), Sigma=matrix(c(20, 12, 12, 20), nrow=2)) %>% 
-  as_tibble() %>% 
-  rename(height = V1, mass = V2) %>% 
-  mutate(gender="maschio")
-
-female <- mvrnorm(n=1000, mu=c(160,60), Sigma=matrix(c(20, 10, 15, 20), nrow=2)) %>% 
-  as_tibble() %>% 
-  rename(height = V1, mass = V2) %>% 
-  mutate(gender="femmina")
-
-p0 <- rbind(male, female) %>% 
-  ggplot(aes(x=height, y=mass)) + 
-  geom_point(aes(color=gender, shape=gender)) + 
-  # scale_color_discrete(palette=c("pink", "lightblue")) +
-  labs(x="Statura (cm)", y="Peso (kg)", color="Sesso", shape="Sesso") + 
-  lims(x=c(140,190), y=c(38, 90))
-```
 
 :::columns
 :::column
@@ -187,12 +175,13 @@ p0
 :::
 
 :::column
-```{dot, ref.label="nnet"}
-```
+![](images/net.png)
+
 :::callout-note
 ## Addestramento
 **Addestrare** la rete significa trovare la combinazione di **pesi** $w_i$ che minimizza il numero di predizioni errate
 :::
+
 :::
 :::
 
@@ -202,61 +191,33 @@ p0
 :::columns
 :::column
 ```{r}
-rbind(male, female) %>% 
-  ggplot(aes(x=height, y=mass)) + 
-  geom_point(aes(shape=gender), color=grey(4/5)) + 
-  geom_point(
-    data=tibble(height=178, mass=82, gender="maschio"),
-    aes(color=gender, shape=gender),
-    size=3,
-    show.legend = F
-  ) +
-  labs(x="Statura (cm)", y="Peso (kg)", color="Sesso", shape="Sesso") + 
-  lims(x=c(140,190), y=c(38, 90))
+dplyr::select(df, !train) %>% 
+  bind_cols(
+    predict(model, .) %>% 
+      `colnames<-`(c("maschio_p", "femmina_p")) %>% 
+      as_tibble()
+  ) %>% 
+  mutate(
+    gender_p = ifelse(maschio_p > femmina_p, "maschio", "femmina"),
+    correct = gender == gender_p, 
+    label = ifelse(correct, gender, "errore"),
+    label = factor(label, ordered=T, levels=c("femmina", "maschio", "errore"))
+  ) %>% 
+  arrange(label) %>% 
+  ggplot(aes(x=statura, y=peso)) +
+  geom_point(aes(color=label, shape=gender)) + 
+  labs(x="Statura (cm)", y="Peso (kg)", color="Inferenza", shape="Sesso") + 
+  scale_color_discrete(palette=c("pink", "lightblue", "red"))
 ```
 :::
 
 :::column
-```{dot nnet2}
-digraph nn {
-  rankdir="LR";
-  splines=false;
-  node [fontname="Helvetica", fontsize=12];
-  edge [fontname="Helvetica", fontsize=8, fontcolor="#000099"];
-  subgraph input {
-    label=input;
-    altezza [label="178 cm"]
-    peso [label="82 kg"]
-  }
-  subgraph hidden {
-    label=hidden;
-    n1;
-    n2;
-    n3;
-  }
-  subgraph output {
-    label=output
-    maschio;
-    femmina [fontcolor="#888888"];
-  }
-  
-  altezza -> n1 [xlabel="w1"]
-  altezza -> n2 [xlabel = "w2"]
-  altezza -> n3 [xlabel = "w3"]
-  peso -> n1 [xlabel = "w4"]
-  peso -> n2 [xlabel = "w5"]
-  peso -> n3 [xlabel = "w6"]
-  n1 -> maschio [xlabel = "w7"]
-  n2 -> maschio [xlabel = "w8"]
-  n3 -> maschio [xlabel = "w9"]
-  n1 -> femmina [xlabel = "w10"]
-  n2 -> femmina [xlabel = "w11"]
-  n3 -> femmina [xlabel = "w12"]
-}
-```
+![](images/net.png)
+
 :::callout-important
 Ma la risposta è **probabilistica**!!!
 :::
+
 :::
 :::
 
@@ -284,12 +245,13 @@ rbind(male, female) %>%
 :::
 
 :::column
-```{dot, ref.label="nnet"}
-```
+![](images/net.png)
+
 :::callout-warning
 ## Inferenza su una popolazione differente (es. asiatica)
 Se usata su dati troppo diversi dal set di addestramento, fornisce inferenze sbagliate!
 :::
+
 :::
 :::
 

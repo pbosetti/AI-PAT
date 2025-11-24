@@ -10,8 +10,8 @@ modified-date: today
 format: 
   revealjs: default
 email-obfuscation: javascript
-transition: none
-transition-speed: fast
+# transition: none
+# transition-speed: fast
 ---
 
 ```{r setup}
@@ -87,17 +87,13 @@ model = neuralnet(
 ![](https://www.researchgate.net/publication/354124420/figure/fig3/AS:11431281386363922@1745064368955/Relationship-between-artificial-intelligence-machine-learning-neural-network-and-deep.tif){width="50%"}
 :::
 
-# AI e *Machine Learning*
-:::{style="text-align: center;"}
-![](images/classification.png){width="80%"}
-:::
 
 ## Cos'è il *machine learning*
 
 :::columns
 :::{.column width=60%}
 * Ciò che oggi è di dominio comune è solo una delle numerose tecniche che vanno sotto il nome di ***machine learning***
-* *Machine learning* significa realizzare ed usare una procedura di calcolo che fornisce predizioni sulla base di **un'esperienza**
+* *Machine learning* significa realizzare ed usare una procedura di calcolo (**algoritmo**) che fornisce predizioni sulla base di **un'esperienza**
 * La *procedura di calcolo* si chiama **modello**
 * *calibrare i parametri* del modello si chiama **addestramento**
 * *utilizzare* la procedura si chiama **inferenza**
@@ -317,6 +313,7 @@ Ciò illustra quanto sia errata l'accusa di plagiarismo per le AI generative: l'
 :::
 
 
+# Large Language Models
 
 
 ## Il passaggio a tecnologia d'uso
@@ -331,6 +328,9 @@ Ciò illustra quanto sia errata l'accusa di plagiarismo per le AI generative: l'
 :::callout-warning
 Ma lo fanno sempre secondo un **processo probabilistico!**
 :::
+
+# {background-iframe="https://nn-vis.noelith.dev"}
+
 
 # I rischi dell'AI
 
